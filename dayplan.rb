@@ -50,7 +50,21 @@ def schedule_planner(meeting_list)
     end
   end
 
-  # this is obviously incorrect, but in the interest of maintainable commits, the suggested schedule is returned here for now
+  onsite_meetings = meeting_list.select { |schedule| schedule[:type] == :onsite }
+
+  onsite_meetings.each do |meeting|
+    time_remaining = time_remaining - meeting[:duration]
+
+    if time_remaining < 0
+      return "These meetings can't fit into one business day! Consider taking a nap."
+    else
+      start_time = clock_converter(time_remaining + meeting[:duration])
+      end_time = clock_converter(time_remaining)
+
+      suggested_schedule << start_time + " - " + end_time + " - " + meeting[:name]
+    end
+  end
+
   suggested_schedule
 
 end
@@ -81,3 +95,10 @@ def clock_converter(time_remaining)
 end
 
 puts schedule_planner(example_one)
+puts "\n"
+puts schedule_planner(example_two)
+puts "\n"
+puts schedule_planner(example_three)
+puts "\n"
+puts schedule_planner(example_four)
+puts "\n"
