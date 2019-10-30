@@ -27,46 +27,41 @@ example_four = [
 ]
 
 def schedule_planner(meeting_list)
-  offsite_meetings = meeting_list.select { |schedule| schedule[:type] == :offsite }
-  suggested_schedule = []
-  time_remaining = 8
-  offsite_meetings.each do |meeting|
-    # offsite meetings will be checked first. this way, the leading travel time will always be discarded.
-    # if leading travel time occurs before the start of work, it can be discarded. if it overlaps with the previous meeting's trailing travel time, it can be discarded
-    # trailing travel time is only subtracted after checking the time remaining because if it occurs after the end of day, it can be discarded.
+  # offsite meetings will be checked first. this way, the leading travel time will always be discarded.
+  # if leading travel time occurs before the start of work, it can be discarded. if it overlaps with the previous meeting's trailing travel time, it can be discarded
+  # trailing travel time is only subtracted after checking the time remaining because if it occurs after the end of day, it can be discarded.
 
+  offsite_meetings = meeting_list.select { |schedule| schedule[:type] == :offsite }
+  list_checker_output = list_checker(offsite_meetings)
+
+  return list_checker_output[0] if list_checker_output[1] < -0.5
+
+  onsite_meetings = meeting_list.select { |schedule| schedule[:type] == :onsite }
+  list_checker_output = list_checker(onsite_meetings, list_checker_output[0], list_checker_output[1])
+
+  return list_checker_output[0]
+end
+
+# refactoring the original into this method is debatable for readability, but it is DRYer
+
+def list_checker(partial_list, suggested_schedule = [], time_remaining = 8)
+  partial_list.each do |meeting|
     time_remaining = time_remaining - meeting[:duration]
 
     if time_remaining < 0
       # This would be done differently in production, but I feel this is a sufficient way to end the method early for this exercise
-      return "These meetings can't fit into one business day! Consider taking a nap."
+      return ["These meetings can't fit into one business day! Consider taking a nap.", -1]
     else
       start_time = clock_converter(time_remaining + meeting[:duration])
       end_time = clock_converter(time_remaining)
 
       suggested_schedule << start_time + " - " + end_time + " - " + meeting[:name]
 
-      time_remaining = time_remaining - 0.5
+      time_remaining = time_remaining - 0.5 if meeting[:type] == :offsite
     end
   end
 
-  onsite_meetings = meeting_list.select { |schedule| schedule[:type] == :onsite }
-
-  onsite_meetings.each do |meeting|
-    time_remaining = time_remaining - meeting[:duration]
-
-    if time_remaining < 0
-      return "These meetings can't fit into one business day! Consider taking a nap."
-    else
-      start_time = clock_converter(time_remaining + meeting[:duration])
-      end_time = clock_converter(time_remaining)
-
-      suggested_schedule << start_time + " - " + end_time + " - " + meeting[:name]
-    end
-  end
-
-  suggested_schedule
-
+  return [suggested_schedule, time_remaining]
 end
 
 def clock_converter(time_remaining)
